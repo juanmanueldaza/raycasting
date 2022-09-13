@@ -45,13 +45,6 @@ scene.add(box);
 
 /////////////////////////// CREATING A RAYCASTER ///////////////////////////
 
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-function onPointerMove(event) {
-  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-}
-
 /////////////////////////// CREATING A PLANE SURFACE ///////////////////////////
 
 const planeGeometry = new THREE.PlaneGeometry(30, 30);
@@ -64,6 +57,9 @@ const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 scene.add(plane);
 plane.rotation.x = -0.5 * Math.PI;
 plane.receiveShadow = true;
+plane.name = "plane-1";
+plane.userData.draggable = true;
+plane.userData.ground = true;
 
 const gridHelper = new THREE.GridHelper(30);
 scene.add(gridHelper);
@@ -73,12 +69,13 @@ scene.add(gridHelper);
 /////////////////////////// CREATING A SPHERE ///////////////////////////
 const sphereGeometry = new THREE.SphereGeometry(5, 40, 50);
 const sphereMaterial = new THREE.MeshStandardMaterial({
-  color: 0xff0000,
+  color: 0x000000,
 });
 const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 scene.add(sphere);
 sphere.position.set(-10, 10, 0);
 sphere.castShadow = true;
+sphere.name = "sphere";
 ///////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING LIGHTS ///////////////////////////
@@ -111,6 +108,7 @@ scene.add(spotLightHelper);
 const gui = new dat.GUI();
 const options = {
   sphereColor: "#ffea00",
+  raycastColor: "#ffaa00",
   sphereWireframe: false,
   sphereSpeed: 0.01,
   spotLightAngle: 0.2,
@@ -132,18 +130,49 @@ gui.add(options, "spotLightIntensity", 0, 2);
 let step = 0;
 let speed = 0.01;
 
-function animate(time) {
-  // update the picking ray with the camera and pointer position
-  raycaster.setFromCamera(pointer, camera);
+const raycaster = new THREE.Raycaster();
+const pointerClick = new THREE.Vector2();
+const pointerMove = new THREE.Vector2();
+let draggable;
 
+function onPointerDown(event) {
+  if (draggable) {
+    console.log(`dropped draggable object: ${draggable.name}`);
+    draggable = null;
+    return;
+  }
+  pointerClick.x = (event.clientX / window.innerWidth) * 2 - 1;
+  pointerClick.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  // update the picking ray with the camera and pointer position
+  raycaster.setFromCamera(pointerClick, camera);
   // calculate objects intersecting the picking ray
-  const intersects = raycaster.intersectObjects(scene.children);
-  console.log(intersects);
-  for (let i = 0; i < intersects.length; i++) {
-    if (intersects[i].object.isMesh === true) {
-      intersects[i].object.material.color.set(0xff0000);
+  const found = raycaster.intersectObjects(scene.children);
+
+  if (found.length > 0 && found[0].object.userData.draggable) {
+    draggable = found[0].object;
+    console.log(`found draggable object: ${draggable.name}`);
+  }
+}
+
+function onPointerMove(event) {
+  pointerMove.x = (event.clientX / window.innerWidth) * 2 - 1;
+  pointerMove.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
+function dragObject() {
+  if (draggable != null) {
+    raycaster.setFromCamera(pointerMove, camera);
+    const found = raycaster.intersectObject(scene.children);
+    if (found.length > 0) {
+      for (let o of found) {
+        console.log(o.object.name);
+      }
     }
   }
+}
+
+function animate(time) {
+  dragObject();
   box.rotation.x = time / 1000;
   box.rotation.y = time / 1000;
   step += options.sphereSpeed;
@@ -156,4 +185,5 @@ function animate(time) {
 }
 
 renderer.setAnimationLoop(animate);
+window.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointermove", onPointerMove);
