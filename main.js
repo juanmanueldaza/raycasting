@@ -5,24 +5,50 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
 
 const renderer = new THREE.WebGLRenderer();
-renderer.shadowMap.enabled = true;
-
-renderer.setSize(window.innerWidth, window.innerHeight);
-
-document.body.appendChild(renderer.domElement);
-
 const scene = new THREE.Scene();
-
 const camera = new THREE.PerspectiveCamera(
   75,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
 );
-
 const orbit = new OrbitControls(camera, renderer.domElement);
-
 const axesHelper = new THREE.AxesHelper(5);
+const boxGeometry = new THREE.BoxGeometry();
+const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const box = new THREE.Mesh(boxGeometry, boxMaterial);
+const planeGeometry = new THREE.PlaneGeometry(30, 30);
+const planeMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffff00,
+  side: THREE.DoubleSide,
+});
+const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+const sphereGeometry = new THREE.SphereGeometry(5, 40, 50);
+const sphereMaterial = new THREE.MeshStandardMaterial({
+  color: 0x000000,
+});
+const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+const ambientLight = new THREE.AmbientLight(0x333333);
+const spotLight = new THREE.SpotLight(0xffffff);
+const spotLightHelper = new THREE.SpotLightHelper(spotLight);
+const raycaster = new THREE.Raycaster();
+const pointerClick = new THREE.Vector2();
+const pointerMove = new THREE.Vector2();
+let draggable;
+const gui = new dat.GUI();
+const options = {
+  sphereColor: "#ffea00",
+  raycastColor: "#ffaa00",
+  sphereWireframe: false,
+  sphereSpeed: 0.01,
+  spotLightAngle: 0.2,
+  spotLightPenumbra: 0,
+  spotLightIntensity: 1,
+};
+renderer.shadowMap.enabled = true;
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+document.body.appendChild(renderer.domElement);
 
 scene.add(axesHelper);
 
@@ -36,9 +62,6 @@ orbit.update();
 ///////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING A BOX ///////////////////////////
-const boxGeometry = new THREE.BoxGeometry();
-const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const box = new THREE.Mesh(boxGeometry, boxMaterial);
 
 scene.add(box);
 ///////////////////////////////////////////////////////////////////////
@@ -46,13 +69,6 @@ scene.add(box);
 /////////////////////////// CREATING A RAYCASTER ///////////////////////////
 
 /////////////////////////// CREATING A PLANE SURFACE ///////////////////////////
-
-const planeGeometry = new THREE.PlaneGeometry(30, 30);
-const planeMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffff00,
-  side: THREE.DoubleSide,
-});
-const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 
 scene.add(plane);
 plane.rotation.x = -0.5 * Math.PI;
@@ -67,11 +83,7 @@ scene.add(gridHelper);
 ///////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING A SPHERE ///////////////////////////
-const sphereGeometry = new THREE.SphereGeometry(5, 40, 50);
-const sphereMaterial = new THREE.MeshStandardMaterial({
-  color: 0x000000,
-});
-const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
 scene.add(sphere);
 sphere.position.set(-10, 10, 0);
 sphere.castShadow = true;
@@ -79,7 +91,7 @@ sphere.name = "sphere";
 ///////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING LIGHTS ///////////////////////////
-const ambientLight = new THREE.AmbientLight(0x333333);
+
 scene.add(ambientLight);
 
 // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -96,25 +108,12 @@ scene.add(ambientLight);
 // );
 // scene.add(dLightShadowHelper);
 
-const spotLight = new THREE.SpotLight(0xffffff);
 scene.add(spotLight);
 spotLight.position.set(-100, 100, 0);
 spotLight.castShadow = true;
 spotLight.angle = 0.2;
 
-const spotLightHelper = new THREE.SpotLightHelper(spotLight);
 scene.add(spotLightHelper);
-
-const gui = new dat.GUI();
-const options = {
-  sphereColor: "#ffea00",
-  raycastColor: "#ffaa00",
-  sphereWireframe: false,
-  sphereSpeed: 0.01,
-  spotLightAngle: 0.2,
-  spotLightPenumbra: 0,
-  spotLightIntensity: 1,
-};
 
 gui.addColor(options, "sphereColor").onChange((e) => {
   sphere.material.color.set(e);
@@ -129,11 +128,6 @@ gui.add(options, "spotLightIntensity", 0, 2);
 
 let step = 0;
 let speed = 0.01;
-
-const raycaster = new THREE.Raycaster();
-const pointerClick = new THREE.Vector2();
-const pointerMove = new THREE.Vector2();
-let draggable;
 
 function onPointerDown(event) {
   if (draggable) {
