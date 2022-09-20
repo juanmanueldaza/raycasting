@@ -4,38 +4,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
 
-const renderer = new THREE.WebGLRenderer();
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-const orbit = new OrbitControls(camera, renderer.domElement);
-const axesHelper = new THREE.AxesHelper(5);
-const boxGeometry = new THREE.BoxGeometry();
-const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const box = new THREE.Mesh(boxGeometry, boxMaterial);
-const planeGeometry = new THREE.PlaneGeometry(30, 30);
-const planeMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffff00,
-  side: THREE.DoubleSide,
-});
-const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-const sphereGeometry = new THREE.SphereGeometry(5, 40, 50);
-const sphereMaterial = new THREE.MeshStandardMaterial({
-  color: 0x000000,
-});
-const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-const ambientLight = new THREE.AmbientLight(0x333333);
-const spotLight = new THREE.SpotLight(0xffffff);
-const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-const raycaster = new THREE.Raycaster();
-const pointerClick = new THREE.Vector2();
-const pointerMove = new THREE.Vector2();
-let draggable;
-const gui = new dat.GUI();
 const options = {
   sphereColor: "#ffea00",
   raycastColor: "#ffaa00",
@@ -45,75 +13,148 @@ const options = {
   spotLightPenumbra: 0,
   spotLightIntensity: 1,
 };
-renderer.shadowMap.enabled = true;
-renderer.setSize(window.innerWidth, window.innerHeight);
 
-document.body.appendChild(renderer.domElement);
+const create = {
+  renderer: () => {
+    const renderer = new THREE.WebGLRenderer();
+    renderer.shadowMap.enabled = true;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(animate);
+    document.body.appendChild(renderer.domElement);
+    return renderer;
+  },
+  scene: () => {
+    const scene = new THREE.Scene();
+    scene.add(helpers.axes);
+    scene.add(helpers.grid);
+    scene.add(helpers.spotLight);
+    scene.add(box);
+    scene.add(plane);
+    scene.add(sphere);
+    scene.add(lights.ambient);
+    scene.add(lights.spot);
 
-scene.add(axesHelper);
+    return scene;
+  },
+  camera: () => {
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(1, 2, 6); // same as above but in one line (x, y, z)
+    // Every time you set the position of the camera, you need to update the orbit controls
+    controls.update();
+    return camera;
+  },
+  control: () => {
+    return new OrbitControls(camera, renderer.domElement);
+  },
+  gui: () => {
+    new dat.GUI();
+  },
+  raycaster: () => {
+    return new THREE.Raycaster();
+  },
+  pointer: {
+    click: () => {
+      new THREE.Vector2();
+    },
+    move: () => {
+      new THREE.Vector2();
+    },
+  },
+  object: {
+    box: () => {
+      const geometry = new THREE.BoxGeometry();
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const box = new THREE.Mesh(geometry, material);
+      return box;
+    },
+    plane: () => {
+      const geometry = new THREE.PlaneGeometry(30, 30);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xffff00,
+        side: THREE.DoubleSide,
+      });
+      const plane = new THREE.Mesh(geometry, material);
+      plane.rotation.x = -0.5 * Math.PI;
+      plane.receiveShadow = true;
+      plane.name = "plane-1";
+      plane.userData.draggable = true;
+      plane.userData.ground = true;
+      return plane;
+    },
+    sphere: () => {
+      const geometry = new THREE.SphereGeometry(5, 40, 50);
+      const material = new THREE.MeshStandardMaterial({
+        color: options.sphereColor,
+        wireframe: options.sphereWireframe,
+      });
+      const sphere = new THREE.Mesh(geometry, material);
+      return sphere;
+    },
+  },
+  light: {
+    ambient: () => {
+      return new THREE.AmbientLight(0x333333);
+    },
+    spot: () => {
+      return new THREE.SpotLight(0xffffff);
+    },
+  },
+  helper: {
+    axes: () => {
+      return new THREE.AxesHelper(5);
+    },
+    spotLight: () => {
+      return new THREE.SpotLightHelper(lights.spot);
+    },
+    grid: () => {
+      const gridHelper = new THREE.GridHelper(30);
+      return gridHelper;
+    },
+  },
+};
+let draggable = null;
 
-/////////////////////////// CAMERA POSITION ///////////////////////////
-// camera.position.x = 1;
-// camera.position.y = 1;
-// camera.position.z = 10;
-camera.position.set(1, 2, 6); // same as above but in one line (x, y, z)
-// Every time you set the position of the camera, you need to update the orbit controls
-orbit.update();
+const renderer = create.renderer();
+const scene = create.scene();
+const camera = create.camera();
+const controls = create.control();
+const box = create.object.box();
+const plane = create.object.plane();
+const sphere = create.object.sphere();
+const lights = {
+  ambient: create.light.ambient(),
+  spot: create.light.spot(),
+};
+const helpers = {
+  axes: create.helper.axes(),
+  spotLight: create.helper.spotLight(),
+  grid: create.helper.grid(),
+};
+const gui = create.gui();
+const raycaster = raycasting.createRaycaster();
+const pointerClick = raycasting.pointer.click();
+const pointerMove = raycasting.pointer.move();
+
 ///////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING A BOX ///////////////////////////
-
-scene.add(box);
-///////////////////////////////////////////////////////////////////////
-
-/////////////////////////// CREATING A RAYCASTER ///////////////////////////
-
-/////////////////////////// CREATING A PLANE SURFACE ///////////////////////////
-
-scene.add(plane);
-plane.rotation.x = -0.5 * Math.PI;
-plane.receiveShadow = true;
-plane.name = "plane-1";
-plane.userData.draggable = true;
-plane.userData.ground = true;
-
-const gridHelper = new THREE.GridHelper(30);
-scene.add(gridHelper);
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING A SPHERE ///////////////////////////
 
-scene.add(sphere);
-sphere.position.set(-10, 10, 0);
-sphere.castShadow = true;
-sphere.name = "sphere";
 ///////////////////////////////////////////////////////////////////////
 
 /////////////////////////// CREATING LIGHTS ///////////////////////////
 
-scene.add(ambientLight);
-
-// const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-// scene.add(directionalLight);
-// directionalLight.position.set(-30, 50, 0);
-// directionalLight.castShadow = true;
-// directionalLight.shadow.camera.bottom = -12;
-
-// const dLightHelper = new THREE.DirectionalLightHelper(directionalLight, 5);
-// scene.add(dLightHelper);
-
-// const dLightShadowHelper = new THREE.CameraHelper(
-//   directionalLight.shadow.camera
-// );
-// scene.add(dLightShadowHelper);
-
-scene.add(spotLight);
-spotLight.position.set(-100, 100, 0);
-spotLight.castShadow = true;
-spotLight.angle = 0.2;
-
-scene.add(spotLightHelper);
+lights.spot.position.set(-100, 100, 0);
+lights.spot.castShadow = true;
+lights.spot.angle = 0.2;
 
 gui.addColor(options, "sphereColor").onChange((e) => {
   sphere.material.color.set(e);
@@ -154,7 +195,7 @@ function onPointerMove(event) {
 }
 
 function dragObject() {
-  if (draggable != null) {
+  if (raycasting.draggable != null) {
     raycaster.setFromCamera(pointerMove, camera);
     const found = raycaster.intersectObject(scene.children);
     if (found.length > 0) {
@@ -171,13 +212,12 @@ function animate(time) {
   box.rotation.y = time / 1000;
   step += options.sphereSpeed;
   sphere.position.y = 10 * Math.abs(Math.sin(step));
-  spotLight.angle = options.spotLightAngle;
-  spotLight.penumbra = options.spotLightPenumbra;
-  spotLight.intensity = options.spotLightIntensity;
-  spotLightHelper.update();
+  lights.spot.angle = options.spotLightAngle;
+  lights.spot.penumbra = options.spotLightPenumbra;
+  lights.spot.intensity = options.spotLightIntensity;
+  helpers.spotLight.update();
   renderer.render(scene, camera);
 }
 
-renderer.setAnimationLoop(animate);
 window.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointermove", onPointerMove);
